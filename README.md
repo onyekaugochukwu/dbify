@@ -14,12 +14,16 @@
 
 ## Features
 
-- **SQLite, DuckDB and PostgreSQL 17** running locally in WebAssembly. Each query tab picks its engine.
+- **SQLite, DuckDB and PostgreSQL 17** running locally in WebAssembly. Create as many databases as you like in each engine, then rename, delete, save or open them.
+- **Clean start**: the home page offers *Try the sample database*, *Create a database* or *Import a file*. Nothing opens until you choose.
 - **Editor**: syntax highlighting, autocomplete for keywords, tables and columns, keywords capitalised automatically as you type (can be switched off), Format SQL, run all / run selection / run the statement under the cursor.
 - **Beginner-friendly errors**: "There is no column called `nmae`. Did you mean `name`?", with the mistake underlined in the editor. The original engine message is one click away.
 - **Import** CSV, TSV, Excel (`.xlsx`, `.xls`, every sheet becomes a table), JSON / NDJSON and Parquet. Drag a file onto the page or use the ⋯ menu next to a database. Column types are detected automatically and names are cleaned up (`Transaction ID` → `transaction_id`).
-- **Results grid** that stays fast with large results, sortable columns, and export to CSV, JSON or Excel.
-- **Your work is kept**: databases and open tabs are saved in the browser automatically. *Save database to file* / *Open database file* moves them between computers.
+- **Results grid** that stays fast with large results: sortable columns, a row search, a form view for one row at a time, and export to CSV, JSON or Excel.
+- **Table data editor**: open any table to page through it, filter each column (`phones`, `>1000`, `null`…), sort, edit cells like a spreadsheet, add and delete rows, then save. **See the SQL** shows the `SELECT` behind the view and the `UPDATE` / `INSERT` / `DELETE` statements your edits will run. Changes are saved in one transaction, and if the database refuses one (for example a foreign key), nothing is saved and the reason is explained.
+- **ER diagrams** of any database: tables, keys and relationships, drag to arrange, download as PNG or SVG.
+- **Query history** and **Copy link**: a link that opens your query in dbify (on the sample database if you used it). The query lives in the link itself; nothing is uploaded.
+- **Your work is kept**: databases and open tabs are saved in the browser automatically. *Save to a file* / *Open a saved database file* moves them between computers.
 - **Lessons**: the fictional *Naija Mart* online-store database (customers, products, orders, order items, payments) and 22 exercises from `SELECT *` to window functions, with hints, answers and automatic answer checking. Every answer runs unchanged on all three engines.
 - Dark and light themes.
 

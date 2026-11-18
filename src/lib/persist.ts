@@ -1,6 +1,5 @@
 // Autosave: each engine's database is kept in IndexedDB so work survives a
 // page reload. Works on hosted pages and on pages opened from disk.
-import type { EngineId } from '../engines/types';
 
 const DB_NAME = 'dbify';
 const STORE = 'databases';
@@ -27,7 +26,7 @@ async function tx<T>(mode: IDBTransactionMode, fn: (s: IDBObjectStore) => IDBReq
   }
 }
 
-export async function loadSaved(id: EngineId): Promise<Uint8Array | null> {
+export async function loadSaved(id: string): Promise<Uint8Array | null> {
   try {
     const v = await tx<unknown>('readonly', (s) => s.get(id));
     return v instanceof Uint8Array ? v : v instanceof ArrayBuffer ? new Uint8Array(v) : null;
@@ -36,7 +35,7 @@ export async function loadSaved(id: EngineId): Promise<Uint8Array | null> {
   }
 }
 
-export async function saveBytes(id: EngineId, bytes: Uint8Array): Promise<boolean> {
+export async function saveBytes(id: string, bytes: Uint8Array): Promise<boolean> {
   try {
     await tx('readwrite', (s) => s.put(bytes, id));
     return true;
@@ -45,7 +44,7 @@ export async function saveBytes(id: EngineId, bytes: Uint8Array): Promise<boolea
   }
 }
 
-export async function clearSaved(id: EngineId) {
+export async function clearSaved(id: string) {
   try {
     await tx('readwrite', (s) => s.delete(id));
   } catch {}

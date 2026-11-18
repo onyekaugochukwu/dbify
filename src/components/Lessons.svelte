@@ -12,7 +12,20 @@
 
   const levels = [...new Set(exercises.map((e) => e.level))];
   const done = $derived(exercises.filter((e) => app.completed[e.id]).length);
-  const hasSample = (id: EngineId) => app.engines[id].schema.some((t) => t.name === 'order_items');
+  const sampleDb = $derived(app.sampleDb(engine));
+  const hasSample = (id: EngineId) => {
+    const d = app.sampleDb(id);
+    return !!d && (app.dbs[d.id]?.status !== 'ready' || app.dbs[d.id].schema.some((t) => t.name === 'order_items'));
+  };
+  let loading = $state(false);
+  async function load() {
+    loading = true;
+    try {
+      await app.loadSample(engine);
+    } finally {
+      loading = false;
+    }
+  }
 
   function select(ex: Exercise) {
     selectedId = ex.id;
@@ -21,12 +34,12 @@
   }
 
   function useSolution(ex: Exercise) {
-    const tab = app.tabs.find((t) => t.exerciseId === ex.id);
+    const tab = app.tabs.find((t) => t.exerciseId === ex.id && app.engineOf(t.dbId) === engine);
     const code = `-- Reference answer for: ${ex.title}\n${ex.solution}\n`;
     if (tab) {
       tab.sql = code;
       app.activeTabId = tab.id;
-    } else app.newTab(engine, code, ex.title, ex.id);
+    } else if (sampleDb) app.newQuery(sampleDb.id, code, ex.title, ex.id);
   }
 </script>
 
@@ -46,11 +59,11 @@
         </select>
       </div>
       {#if hasSample(engine)}
-        <p class="ok"><Icon name="check" size={13} /> Loaded in {ENGINE_META[engine].label}.
-          <button class="linkish" onclick={() => app.loadSample(engine)}>Reload fresh copy</button></p>
+        <p class="ok"><Icon name="check" size={13} /> Ready as <code>{sampleDb?.name}</code> in {ENGINE_META[engine].label}.
+          <button class="linkish" onclick={load}>{loading ? 'Resetting…' : 'Reset to a fresh copy'}</button></p>
       {:else}
-        <button class="btn primary full" disabled={!!app.engines[engine].busy} onclick={() => app.loadSample(engine)}>
-          {app.engines[engine].busy ?? `Load into ${ENGINE_META[engine].label}`}
+        <button class="btn primary full" disabled={loading} onclick={load}>
+          {loading ? 'Loading…' : `Add it to ${ENGINE_META[engine].label}`}
         </button>
       {/if}
     </section>
@@ -82,14 +95,13 @@
       <p class="prompt">{ex.prompt}</p>
 
       {#if !hasSample(engine)}
-        <p class="warn">The sample database isn't loaded in {ENGINE_META[engine].label} yet.
-          <button class="linkish" onclick={() => app.loadSample(engine)}>Load it</button></p>
+        <p class="warn">"Write my answer" will add the sample database to {ENGINE_META[engine].label} first.</p>
       {/if}
 
       <div class="actions">
         <button class="btn primary" onclick={() => app.openExercise(ex, engine)}><Icon name="file" size={14} /> Write my answer</button>
         {#if ex.checkable !== false}
-          {@const tab = app.tabs.find((t) => t.exerciseId === ex.id)}
+          {@const tab = app.tabs.find((t) => t.exerciseId === ex.id && app.engineOf(t.dbId) === engine)}
           <button class="btn" disabled={!tab} title={tab ? 'Run your SQL and compare it with the expected result' : 'Open the exercise first'} onclick={() => tab && app.checkExercise(ex, tab)}>
             <Icon name="check" size={14} /> Check answer
           </button>
@@ -325,6 +337,10 @@
     padding: 10px;
     white-space: pre-wrap;
     margin: 4px 0 6px;
+  }
+  code {
+    font-family: var(--mono);
+    font-size: 12px;
   }
   .linkish {
     background: none;

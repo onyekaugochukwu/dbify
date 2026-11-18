@@ -75,6 +75,18 @@ export interface Engine {
   exportBytes(): Promise<Uint8Array>;
   importBytes(bytes: Uint8Array): Promise<void>;
   reset(): Promise<void>;
+  /** Shuts the engine down and frees its memory. */
+  close(): Promise<void>;
+}
+
+/** One database the user created. Each database runs in its own engine instance. */
+export interface DbMeta {
+  id: string;
+  engine: EngineId;
+  name: string;
+  /** Created from the lessons sample. */
+  sample?: boolean;
+  createdAt: number;
 }
 
 export const MAX_DISPLAY_ROWS = 10_000;
@@ -90,7 +102,7 @@ export const ENGINE_META: Record<EngineId, { label: string; short: string; fileE
     label: 'DuckDB',
     short: 'DuckDB',
     fileExt: '.duckdb.tar.gz',
-    description: 'Fast analytics. Reads CSV, Parquet and JSON files natively.',
+    description: 'Fast analytics on big tables. Great for data analysis and CSV files.',
   },
   postgres: {
     label: 'PostgreSQL',

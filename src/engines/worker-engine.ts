@@ -7,7 +7,7 @@ export class WorkerEngine implements Engine {
 
   constructor(
     readonly id: EngineId,
-    worker: Worker,
+    private worker: Worker,
     private initArgs: (saved?: Uint8Array | null) => Promise<unknown[]>,
   ) {
     this.call = rpcClient(worker);
@@ -33,5 +33,8 @@ export class WorkerEngine implements Engine {
   }
   reset() {
     return this.call<void>('reset');
+  }
+  async close() {
+    this.worker.terminate();
   }
 }

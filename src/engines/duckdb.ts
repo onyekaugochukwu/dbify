@@ -269,6 +269,10 @@ export class DuckDBEngine implements Engine {
     }
   }
 
+  async close() {
+    await this.db?.terminate();
+  }
+
   async reset() {
     const objs = await this.rows<{ name: string; kind: string }>(
       `SELECT table_name AS name, table_type AS kind FROM information_schema.tables

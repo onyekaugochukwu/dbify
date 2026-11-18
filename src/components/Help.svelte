@@ -45,6 +45,7 @@
       <dt><kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>F</kbd></dt><dd>Format SQL</dd>
       <dt><kbd>Ctrl</kbd>+<kbd>/</kbd></dt><dd>Comment / uncomment lines</dd>
       <dt><kbd>Ctrl</kbd>+<kbd>Space</kbd></dt><dd>Show suggestions</dd>
+      <dt>Double-click a cell</dt><dd>Edit it (in a table's data view). Enter saves the cell, Esc cancels.</dd>
     </dl>
     <p class="small">On a Mac, use <kbd>Cmd</kbd> instead of <kbd>Ctrl</kbd>.</p>
   </section>
@@ -52,7 +53,8 @@
   <section>
     <h3>Your data</h3>
     <p>Everything runs inside your browser. Nothing you type or import is uploaded anywhere.</p>
-    <p>Each database is saved automatically in this browser, so it's still there next time. To keep a copy or move it to another computer, use <b>Save database to file</b> from the ⋯ menu next to a database, and <b>Open database file</b> to load it again.</p>
+    <p>You can have as many SQLite, DuckDB and PostgreSQL databases as you like. Each one is saved automatically in this browser, so it's still there next time.</p>
+    <p>To keep a copy or move a database to another computer, use <b>Save to a file</b> from the ⋯ menu next to it. Open it again with <b>Open a saved database file</b> from the ⋯ menu next to the engine.</p>
   </section>
 
   <section>

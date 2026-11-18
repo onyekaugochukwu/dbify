@@ -3,22 +3,29 @@
   import type { Diagnostic } from '@codemirror/lint';
   import Editor, { type EditorApi } from './Editor.svelte';
   import ResultsGrid from './ResultsGrid.svelte';
+  import FormView from './FormView.svelte';
   import Icon from './Icon.svelte';
   import { app, ENGINE_IDS, exercises } from '../state.svelte';
+  import { shareUrl } from '../lib/share';
   import { ENGINE_META, type StatementResult } from '../engines/types';
   import { explainError } from '../lib/friendly-errors';
   import { exportResult, downloadBytes, pickFile } from '../lib/download';
-  import type { QueryTab } from '../state.svelte';
+  import type { Tab } from '../state.svelte';
 
-  let { tab }: { tab: QueryTab } = $props();
+  let { tab }: { tab: Tab } = $props();
 
   let editor: Editor | undefined = $state();
   let api: EditorApi | undefined = $state();
   let split = $state(46); // editor height in %
   let container: HTMLDivElement;
   let exportOpen = $state(false);
+  let search = $state('');
+  let resultMode = $state<'grid' | 'form'>('grid');
+  let formRow = $state(0);
+  let selectedCell = $state<{ r: number; c: number } | null>(null);
 
-  const engineState = $derived(app.engines[tab.engine]);
+  const engineId = $derived(app.engineOf(tab.dbId));
+  const engineState = $derived(app.dbs[tab.dbId] ?? { status: 'idle' as const, schema: [] });
   const schema = $derived(engineState.schema);
   const results = $derived(tab.results ?? []);
   const rowResults = $derived(results.map((r, i) => ({ r, i })).filter((x) => x.r.result));
@@ -28,7 +35,7 @@
   const exercise = $derived(tab.exerciseId ? exercises.find((e) => e.id === tab.exerciseId) : undefined);
 
   function explain(r: StatementResult) {
-    return explainError(tab.engine, r.error ?? '', schema, r.errorPosition);
+    return explainError(engineId, r.error ?? '', schema, r.errorPosition);
   }
 
   // Underline the error in the editor.
@@ -59,7 +66,7 @@
 
   function doFormat() {
     try {
-      const lang = tab.engine === 'postgres' ? 'postgresql' : tab.engine === 'duckdb' ? 'duckdb' : 'sqlite';
+      const lang = engineId === 'postgres' ? 'postgresql' : engineId === 'duckdb' ? 'duckdb' : 'sqlite';
       const out = format(tab.sql, { language: lang as any, keywordCase: app.settings.upperKeywords ? 'upper' : 'preserve', tabWidth: 2 });
       api?.replaceAll(out);
     } catch (e: any) {
@@ -73,6 +80,16 @@
     tab.sql = await f.text();
     tab.title = f.name.replace(/\.[^.]+$/, '');
     app.persistWorkspace();
+  }
+
+  async function copyLink() {
+    const url = shareUrl({ engine: engineId, sql: tab.sql, sample: !!app.db(tab.dbId)?.sample, title: tab.title });
+    try {
+      await navigator.clipboard.writeText(url);
+      app.toast('success', 'Link copied. Anyone who opens it gets this query in dbify' + (app.db(tab.dbId)?.sample ? ', with the sample database.' : '.'));
+    } catch {
+      window.prompt('Copy this link:', url);
+    }
   }
 
   function saveSql() {
@@ -120,23 +137,29 @@
     <span class="sep"></span>
     <button class="btn ghost" onclick={openSql} title="Open a .sql file"><Icon name="folder" size={14} /></button>
     <button class="btn ghost" onclick={saveSql} title="Download this query as a .sql file"><Icon name="save" size={14} /></button>
+    <button class="btn ghost" onclick={copyLink} title="Copy a link that opens this query in dbify"><Icon name="link" size={14} /></button>
     <span class="grow"></span>
     {#if exercise && exercise.checkable !== false}
       <button class="btn check" onclick={() => app.checkExercise(exercise, tab)}><Icon name="check" size={14} /> Check answer</button>
     {/if}
-    <label class="engine-pick" title="Which database engine runs this query">
+    <label class="engine-pick" title="The database this query runs on">
       <span class="dot {engineState.status}"></span>
+      <span class="eng {engineId}">{ENGINE_META[engineId].short}</span>
       <select
-        value={tab.engine}
+        value={tab.dbId}
         onchange={(e) => {
-          tab.engine = (e.currentTarget as HTMLSelectElement).value as typeof tab.engine;
+          tab.dbId = (e.currentTarget as HTMLSelectElement).value;
           tab.results = null;
-          app.ensureEngine(tab.engine).catch(() => {});
+          app.ensureDb(tab.dbId).catch(() => {});
           app.persistWorkspace();
         }}
       >
         {#each ENGINE_IDS as id}
-          <option value={id}>{ENGINE_META[id].label}</option>
+          {#if app.dbsOf(id).length}
+            <optgroup label={ENGINE_META[id].label}>
+              {#each app.dbsOf(id) as d}<option value={d.id}>{d.name}</option>{/each}
+            </optgroup>
+          {/if}
         {/each}
       </select>
     </label>
@@ -156,7 +179,7 @@
         bind:this={editor}
         bind:api
         doc={tab.sql}
-        engine={tab.engine}
+        engine={engineId}
         {schema}
         dark={app.settings.theme === 'dark'}
         upperKeywords={app.settings.upperKeywords}
@@ -171,9 +194,9 @@
       />
     {/key}
     {#if engineState.status === 'loading'}
-      <div class="engine-loading">Starting {ENGINE_META[tab.engine].label}…</div>
+      <div class="engine-loading">Starting {ENGINE_META[engineId].label}…</div>
     {:else if engineState.status === 'error'}
-      <div class="engine-loading err">{ENGINE_META[tab.engine].label} failed to start: {engineState.error}</div>
+      <div class="engine-loading err">{ENGINE_META[engineId].label} failed to start: {engineState.error}</div>
     {/if}
   </div>
 
@@ -195,6 +218,13 @@
         {/each}
       {/if}
       <span class="grow"></span>
+      {#if current && tab.view === 'results'}
+        <input class="search" placeholder="Search rows…" bind:value={search} aria-label="Search the result rows" />
+        <div class="seg" role="radiogroup" aria-label="Result view">
+          <button class:on={resultMode === 'grid'} role="radio" aria-checked={resultMode === 'grid'} onclick={() => (resultMode = 'grid')}>Grid</button>
+          <button class:on={resultMode === 'form'} role="radio" aria-checked={resultMode === 'form'} onclick={() => { formRow = selectedCell?.r ?? 0; resultMode = 'form'; }}>Form</button>
+        </div>
+      {/if}
       {#if results.length}
         <span class="status">{fmtMs(totalMs)}</span>
       {/if}
@@ -224,7 +254,11 @@
           {#if current.truncated}
             <div class="note">Showing the first {current.rows.length.toLocaleString()} of {current.totalRows.toLocaleString()} rows. Add LIMIT, or export to get everything.</div>
           {/if}
-          <ResultsGrid result={current} />
+          {#if resultMode === 'grid'}
+            <ResultsGrid result={current} quickFilter={search} bind:selected={selectedCell} onOpenRow={(r) => { formRow = r; resultMode = 'form'; }} />
+          {:else}
+            <FormView result={current} bind:row={formRow} />
+          {/if}
         {:else if tab.running}
           <div class="placeholder">Running…</div>
         {:else if failed}
@@ -248,7 +282,7 @@
                   <div class="friendly">{@html richText(f.message)}</div>
                   {#if f.hint}<div class="hint"><Icon name="lightbulb" size={13} /> {@html richText(f.hint)}</div>{/if}
                   <details>
-                    <summary>Original error from {ENGINE_META[tab.engine].label}</summary>
+                    <summary>Original error from {ENGINE_META[engineId].label}</summary>
                     <pre>{r.error}</pre>
                   </details>
                 {:else if r.result}
@@ -319,6 +353,32 @@
   }
   .engine-pick select option {
     background: var(--panel);
+  }
+  .search {
+    width: 160px;
+    padding: 4px 8px;
+    font-size: 12.5px;
+    margin-right: 6px;
+  }
+  .seg {
+    display: flex;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    overflow: hidden;
+    margin-right: 8px;
+  }
+  .seg button {
+    background: var(--input-bg);
+    color: var(--text-dim);
+    border: none;
+    padding: 3px 10px;
+    font: inherit;
+    font-size: 12px;
+    cursor: pointer;
+  }
+  .seg button.on {
+    background: var(--accent-strong);
+    color: #fff;
   }
   .check-banner {
     display: flex;

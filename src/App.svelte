@@ -2,15 +2,17 @@
   import Icon from './components/Icon.svelte';
   import Explorer from './components/Explorer.svelte';
   import Lessons from './components/Lessons.svelte';
+  import History from './components/History.svelte';
   import Help from './components/Help.svelte';
   import QueryView from './components/QueryView.svelte';
-  import { app, ENGINE_IDS, sample } from './state.svelte';
-  import { ENGINE_META, type EngineId } from './engines/types';
-  import { IMPORT_ACCEPT } from './lib/import-file';
-  import { pickFile } from './lib/download';
+  import TableView from './components/TableView.svelte';
+  import DiagramView from './components/DiagramView.svelte';
+  import Welcome from './components/Welcome.svelte';
+  import Dialog from './components/Dialog.svelte';
+  import { app } from './state.svelte';
+  import { ENGINE_META } from './engines/types';
 
-  let sideWidth = $state(290);
-  let sideOpen = $state(true);
+  let sideWidth = $state(300);
   let installPrompt = $state<any>(null);
 
   $effect(() => {
@@ -23,10 +25,10 @@
   });
 
   function showPanel(p: typeof app.panel) {
-    if (app.panel === p && sideOpen) sideOpen = false;
+    if (app.panel === p && app.sideOpen) app.sideOpen = false;
     else {
       app.panel = p;
-      sideOpen = true;
+      app.sideOpen = true;
     }
   }
 
@@ -36,7 +38,7 @@
   }
 
   function dragSide(e: PointerEvent) {
-    const move = (ev: PointerEvent) => (sideWidth = Math.max(200, Math.min(520, ev.clientX - 52)));
+    const move = (ev: PointerEvent) => (sideWidth = Math.max(220, Math.min(560, ev.clientX - 52)));
     const up = () => {
       window.removeEventListener('pointermove', move);
       window.removeEventListener('pointerup', up);
@@ -46,22 +48,21 @@
     e.preventDefault();
   }
 
-  async function importWelcome(id: EngineId) {
-    const files = await pickFile(IMPORT_ACCEPT, true);
-    if (files.length) app.importFiles(id, files);
-  }
-
-  // Dropping a file anywhere outside the explorer imports it into the current tab's engine.
+  // Files dropped outside the explorer: .sql opens in the editor, data files are imported
+  // into the current tab's database (or a new one).
   function onDrop(e: DragEvent) {
-    if ((e.target as HTMLElement).closest('.engine')) return;
+    if ((e.target as HTMLElement).closest('.explorer')) return;
     const files = Array.from(e.dataTransfer?.files ?? []);
     if (!files.length) return;
     e.preventDefault();
-    const id = app.activeTab?.engine ?? app.settings.defaultEngine;
-    const sqlFiles = files.filter((f) => /\.sql$/i.test(f.name));
-    sqlFiles.forEach(async (f) => app.newTab(id, await f.text(), f.name.replace(/\.sql$/i, '')));
+    const dbId = app.activeTab?.dbId;
+    for (const f of files.filter((f) => /\.sql$/i.test(f.name))) {
+      f.text().then((sql) => (dbId ? app.newQuery(dbId, sql, f.name.replace(/\.sql$/i, '')) : app.newQueryAnywhere(sql)));
+    }
     const data = files.filter((f) => !/\.sql$/i.test(f.name));
-    if (data.length) app.importFiles(id, data);
+    if (!data.length) return;
+    if (dbId) app.importFiles(dbId, data);
+    else app.importAsNewDatabase(app.settings.defaultEngine, data);
   }
 
   function middleClose(e: MouseEvent, id: string) {
@@ -70,76 +71,71 @@
       app.closeTab(id);
     }
   }
+
+  const kindIcon = { query: 'file', table: 'table', diagram: 'link' } as const;
 </script>
 
 <svelte:window ondragover={(e) => e.preventDefault()} ondrop={onDrop} />
 
-<div class="app" class:collapsed={!sideOpen}>
+<div class="app">
   <nav class="rail" aria-label="Main">
-    <div class="logo" title="dbify">
-      <svg viewBox="0 0 64 64" width="30" height="30" aria-hidden="true"><ellipse cx="32" cy="16" rx="18" ry="7" fill="#4f9cf7"/><path d="M14 16v30c0 3.9 8 7 18 7s18-3.1 18-7V16c0 3.9-8 7-18 7s-18-3.1-18-7z" fill="#3577d4"/><path d="M14 31c0 3.9 8 7 18 7s18-3.1 18-7" fill="none" stroke="var(--rail)" stroke-width="3"/></svg>
-    </div>
-    <button class="rail-btn" class:on={sideOpen && app.panel === 'explorer'} onclick={() => showPanel('explorer')} title="Databases"><Icon name="database" size={21} /></button>
-    <button class="rail-btn" class:on={sideOpen && app.panel === 'lessons'} onclick={() => showPanel('lessons')} title="Lessons & exercises"><Icon name="book" size={21} /></button>
+    <button class="logo" title="Home" onclick={() => (app.activeTabId = null)}>
+      <svg viewBox="0 0 64 64" width="30" height="30" aria-hidden="true"><ellipse cx="32" cy="16" rx="18" ry="7" fill="#4f9cf7" /><path d="M14 16v30c0 3.9 8 7 18 7s18-3.1 18-7V16c0 3.9-8 7-18 7s-18-3.1-18-7z" fill="#3577d4" /><path d="M14 31c0 3.9 8 7 18 7s18-3.1 18-7" fill="none" stroke="var(--rail)" stroke-width="3" /></svg>
+    </button>
+    <button class="rail-btn" class:on={app.sideOpen && app.panel === 'explorer'} onclick={() => showPanel('explorer')} title="Databases"><Icon name="database" size={21} /></button>
+    <button class="rail-btn" class:on={app.sideOpen && app.panel === 'lessons'} onclick={() => showPanel('lessons')} title="Lessons & exercises"><Icon name="book" size={21} /></button>
+    <button class="rail-btn" class:on={app.sideOpen && app.panel === 'history'} onclick={() => showPanel('history')} title="Query history"><Icon name="refresh" size={20} /></button>
     <span class="grow"></span>
     {#if installPrompt}
       <button class="rail-btn" onclick={async () => { await installPrompt.prompt(); installPrompt = null; }} title="Install dbify as an app"><Icon name="install" size={20} /></button>
     {/if}
     <button class="rail-btn" onclick={toggleTheme} title="Switch to {app.settings.theme === 'dark' ? 'light' : 'dark'} theme"><Icon name={app.settings.theme === 'dark' ? 'sun' : 'moon'} size={20} /></button>
-    <button class="rail-btn" class:on={sideOpen && app.panel === 'help'} onclick={() => showPanel('help')} title="Help & settings"><Icon name="help" size={21} /></button>
+    <button class="rail-btn" class:on={app.sideOpen && app.panel === 'help'} onclick={() => showPanel('help')} title="Help & settings"><Icon name="help" size={21} /></button>
   </nav>
 
-  {#if sideOpen}
+  {#if app.sideOpen}
     <aside class="side" style="width:{sideWidth}px">
-      {#if app.panel === 'explorer'}<Explorer />{:else if app.panel === 'lessons'}<Lessons />{:else}<Help />{/if}
+      {#if app.panel === 'explorer'}<Explorer />{:else if app.panel === 'lessons'}<Lessons />{:else if app.panel === 'history'}<History />{:else}<Help />{/if}
     </aside>
     <div class="vsplit" onpointerdown={dragSide} role="separator" aria-orientation="vertical" aria-label="Resize sidebar"></div>
   {/if}
 
   <main class="main">
     <div class="tabbar" role="tablist">
+      <button class="tab-home" class:on={!app.activeTab} onclick={() => (app.activeTabId = null)} title="Home"><Icon name="database" size={14} /></button>
       {#each app.tabs as t (t.id)}
+        {@const d = app.db(t.dbId)}
         <div class="tab" class:on={t.id === app.activeTabId} role="tab" aria-selected={t.id === app.activeTabId} onauxclick={(e) => middleClose(e, t.id)}>
-          <button class="tab-title" onclick={() => { app.activeTabId = t.id; app.persistWorkspace(); }} title="{t.title} · {ENGINE_META[t.engine].label}">
-            <span class="eng {t.engine}">{ENGINE_META[t.engine].short}</span>
+          <button class="tab-title" onclick={() => { app.activeTabId = t.id; app.persistWorkspace(); }} title="{t.title} · {d?.name} ({d ? ENGINE_META[d.engine].label : ''})">
+            {#if d}<span class="eng {d.engine}">{ENGINE_META[d.engine].short}</span>{/if}
+            <Icon name={kindIcon[t.kind]} size={13} />
             <span class="tname">{t.title}</span>
             {#if t.running}<span class="spinner"></span>{/if}
           </button>
           <button class="tab-x" onclick={() => app.closeTab(t.id)} title="Close"><Icon name="x" size={12} /></button>
         </div>
       {/each}
-      <button class="tab-new" onclick={() => app.newTab()} title="New query"><Icon name="plus" size={15} /></button>
+      <button class="tab-new" onclick={() => app.newQueryAnywhere()} title="New query"><Icon name="plus" size={15} /></button>
     </div>
 
     <div class="content">
       {#if app.activeTab}
         {#key app.activeTab.id}
-          <QueryView tab={app.activeTab} />
+          {#if app.activeTab.kind === 'table'}
+            <TableView tab={app.activeTab} />
+          {:else if app.activeTab.kind === 'diagram'}
+            <DiagramView tab={app.activeTab} />
+          {:else}
+            <QueryView tab={app.activeTab} />
+          {/if}
         {/key}
-      {:else}
-        <div class="welcome">
-          <h1>dbify</h1>
-          <p class="lead">Practise SQL with three real database engines, right in your browser. Nothing to install, and it works offline.</p>
-          <div class="cards">
-            {#each ENGINE_IDS as id}
-              <div class="card">
-                <div class="card-title"><span class="eng {id}">{ENGINE_META[id].short}</span>{ENGINE_META[id].label}</div>
-                <p>{ENGINE_META[id].description}</p>
-                <div class="card-actions">
-                  <button class="btn primary small" onclick={() => app.newTab(id)}><Icon name="plus" size={13} /> New query</button>
-                  <button class="btn small" onclick={() => importWelcome(id)}><Icon name="upload" size={13} /> Import file</button>
-                </div>
-              </div>
-            {/each}
-          </div>
-          <div class="start">
-            <button class="btn" onclick={() => showPanel('lessons')}><Icon name="book" size={15} /> Start the {sample.name} lessons</button>
-            <span>or drop a CSV, Excel, JSON or Parquet file anywhere on this page.</span>
-          </div>
-        </div>
+      {:else if app.started}
+        <div class="scroll"><Welcome /></div>
       {/if}
     </div>
   </main>
+
+  {#if app.dialog}<Dialog />{/if}
 
   <div class="toasts" aria-live="polite">
     {#each app.toasts as t (t.id)}
@@ -170,6 +166,10 @@
   }
   .logo {
     margin-bottom: 10px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 2px;
   }
   .rail-btn {
     width: 40px;
@@ -234,11 +234,24 @@
     min-height: 38px;
     scrollbar-width: thin;
   }
+  .tab-home {
+    background: none;
+    border: none;
+    border-right: 1px solid var(--border);
+    color: var(--text-faint);
+    padding: 0 12px;
+    cursor: pointer;
+    position: relative;
+  }
+  .tab-home.on {
+    color: var(--text);
+    background: var(--bg);
+  }
   .tab {
     display: flex;
     align-items: center;
     border-right: 1px solid var(--border);
-    max-width: 230px;
+    max-width: 250px;
     flex: none;
     position: relative;
   }
@@ -257,13 +270,13 @@
   .tab-title {
     display: flex;
     align-items: center;
-    gap: 7px;
+    gap: 6px;
     background: none;
     border: none;
     color: var(--text-dim);
     font: inherit;
     font-size: 13px;
-    padding: 0 4px 0 12px;
+    padding: 0 4px 0 10px;
     height: 100%;
     cursor: pointer;
     min-width: 0;
@@ -317,58 +330,9 @@
     flex: 1;
     min-height: 0;
   }
-  .welcome {
-    max-width: 880px;
-    margin: 0 auto;
-    padding: 56px 32px;
-  }
-  .welcome h1 {
-    font-size: 40px;
-    margin: 0 0 6px;
-    letter-spacing: -0.02em;
-  }
-  .lead {
-    color: var(--text-dim);
-    font-size: 16px;
-    margin: 0 0 28px;
-  }
-  .cards {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
-    gap: 14px;
-  }
-  .card {
-    background: var(--panel);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 16px;
-    display: flex;
-    flex-direction: column;
-  }
-  .card-title {
-    font-weight: 600;
-    display: flex;
-    gap: 8px;
-    align-items: center;
-  }
-  .card p {
-    color: var(--text-dim);
-    font-size: 13px;
-    line-height: 1.5;
-    flex: 1;
-  }
-  .card-actions {
-    display: flex;
-    gap: 6px;
-  }
-  .start {
-    margin-top: 26px;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    color: var(--text-dim);
-    font-size: 13px;
-    flex-wrap: wrap;
+  .scroll {
+    height: 100%;
+    overflow: auto;
   }
   .toasts {
     position: fixed;
@@ -377,7 +341,7 @@
     display: flex;
     flex-direction: column;
     gap: 8px;
-    z-index: 100;
+    z-index: 300;
     max-width: 440px;
   }
   .toast {
