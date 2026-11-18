@@ -1,0 +1,219 @@
+:root {
+  --sans: 'Segoe UI', system-ui, -apple-system, Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --mono: 'Cascadia Code', 'JetBrains Mono', Consolas, 'SF Mono', Menlo, monospace;
+  color-scheme: dark;
+  --bg: #1b1f27;
+  --rail: #14171d;
+  --side: #181b22;
+  --panel: #20242d;
+  --panel-2: #252a34;
+  --editor-bg: #1b1f27;
+  --input-bg: #2a2f3a;
+  --border: #2f3542;
+  --grid-line: #282d38;
+  --row-alt: #1e222a;
+  --row-hover: #2a303c;
+  --active-line: #222733;
+  --selection: #2f4a73;
+  --text: #e6e9ef;
+  --text-dim: #a3abba;
+  --text-faint: #6b7689;
+  --accent: #4f9cf7;
+  --accent-strong: #2f7fe0;
+  --ok: #3fb27f;
+  --ok-bg: #173a2b;
+  --ok-text: #8fe0b8;
+  --warn-bg: #3a3119;
+  --warn-text: #f2d48a;
+  --danger: #ef6461;
+  --shadow: 0 8px 28px rgba(0, 0, 0, 0.45);
+}
+
+:root[data-theme='light'] {
+  color-scheme: light;
+  --bg: #ffffff;
+  --rail: #eef1f5;
+  --side: #f6f7f9;
+  --panel: #fbfbfc;
+  --panel-2: #f1f3f6;
+  --editor-bg: #ffffff;
+  --input-bg: #eef1f5;
+  --border: #dde1e8;
+  --grid-line: #eceef2;
+  --row-alt: #f8f9fb;
+  --row-hover: #e9eef6;
+  --active-line: #f3f6fb;
+  --selection: #cfe0fb;
+  --text: #1f2430;
+  --text-dim: #5a6475;
+  --text-faint: #8a94a6;
+  --accent: #2f7fe0;
+  --accent-strong: #1f6ac7;
+  --ok: #2c9a6a;
+  --ok-bg: #e3f5ec;
+  --ok-text: #1d6b49;
+  --warn-bg: #fdf4dc;
+  --warn-text: #7a5a0c;
+  --danger: #d64541;
+  --shadow: 0 8px 28px rgba(20, 30, 50, 0.16);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: 14px;
+  -webkit-font-smoothing: antialiased;
+}
+
+button,
+input,
+select {
+  font-family: inherit;
+}
+
+input,
+select {
+  background: var(--input-bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 6px;
+  padding: 6px 9px;
+  font-size: 13px;
+  outline: none;
+}
+
+input:focus,
+select:focus {
+  border-color: var(--accent);
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--input-bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 13px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.btn:hover:not(:disabled) {
+  border-color: var(--text-faint);
+}
+
+.btn:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.btn.primary {
+  background: var(--accent-strong);
+  border-color: var(--accent-strong);
+  color: #fff;
+}
+
+.btn.primary:hover:not(:disabled) {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.btn.check {
+  background: var(--ok);
+  border-color: var(--ok);
+  color: #fff;
+}
+
+.btn.ghost {
+  background: none;
+  border-color: transparent;
+  color: var(--text-dim);
+  padding: 6px 8px;
+}
+
+.btn.ghost:hover:not(:disabled) {
+  background: var(--row-hover);
+  color: var(--text);
+  border-color: transparent;
+}
+
+.btn.small {
+  padding: 4px 9px;
+  font-size: 12.5px;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--text-faint);
+  flex: none;
+}
+
+.dot.ready {
+  background: var(--ok);
+}
+
+.dot.loading {
+  background: #e5b450;
+  animation: pulse 1s ease-in-out infinite;
+}
+
+.dot.error {
+  background: var(--danger);
+}
+
+@keyframes pulse {
+  50% {
+    opacity: 0.35;
+  }
+}
+
+.eng {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  padding: 1px 5px;
+  border-radius: 4px;
+  color: #fff;
+  flex: none;
+}
+
+.eng.sqlite {
+  background: #3a7bbf;
+}
+
+.eng.duckdb {
+  background: #b8860b;
+}
+
+.eng.postgres {
+  background: #336791;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 5px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
